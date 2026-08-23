@@ -1,0 +1,31 @@
+{
+  "name": "gh-autofollow",
+  "version": "0.1.0",
+  "description": "Follow everyone on a GitHub list page, then walk to the next page. Firefox and Chromium.",
+  "scripts": {
+    "start": "node src/cli.js"
+  },
+  "keywords": [
+    "github",
+    "follow",
+    "automation",
+    "playwright",
+    "cli"
+  ],
+  "type": "module",
+  "dependencies": {
+    "playwright": "^1.62.1"
+  },
+  "bin": {
+    "ghaf": "src/cli.js"
+  },
+  "license": "MIT",
+  "author": "codeyevsky",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/codeyevsky/gh-autofollow.git"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,14 @@
+<html><head><style>.hidden{display:none}</style></head><body>
+<div class="d-table"><a href="/alice" data-hovercard-type="user">Alice</a>
+  <form action="/users/follow?target=alice" method="post"><input name="authenticity_token" value="tok-a"><button type="submit">Follow</button></form>
+  <form action="/users/unfollow?target=alice" method="post" class="hidden"><input name="authenticity_token" value="tok-a"><button type="submit">Unfollow</button></form>
+</div>
+<div class="d-table"><a href="/bob">Bob</a>
+  <form action="/users/follow?target=bob" method="post" class="hidden"><input name="authenticity_token" value="tok-b"><button type="submit">Follow</button></form>
+  <form action="/users/unfollow?target=bob" method="post"><input name="authenticity_token" value="tok-b"><button type="submit">Unfollow</button></form>
+</div>
+<div class="d-table"><a href="/carol">Carol</a>
+  <form action="/users/follow?target=carol" method="post"><input name="authenticity_token" value="tok-c"><button type="submit">Follow</button></form>
+  <form action="/users/unfollow?target=carol" method="post" class="hidden"><input name="authenticity_token" value="tok-c"><button type="submit">Unfollow</button></form>
+</div>
+</body></html>

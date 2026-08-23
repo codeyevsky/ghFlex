@@ -62,7 +62,7 @@ async function submit(page, target) {
 }
 
 function isRateLimitResponse(res) {
-  if (res.status === 429 || res.status === 403) return `HTTP ${res.status}`;
+  if (res.status === 429 || res.status === 403 || res.status === 422) return `HTTP ${res.status} (follow limit / throttled)`;
   const t = (res.text || '').toLowerCase();
   return RATE_LIMIT_HINTS.find((h) => t.includes(h.toLowerCase())) || null;
 }
@@ -107,6 +107,7 @@ export async function runAction(page, opts) {
   } catch {}
 
   const stats = { done: [], skipped: 0, pages: 0, stopped: null, mode };
+  let consecutiveFail = 0;
 
   onLog(`→ ${verb}: ${url}`);
   await page.goto(url, { waitUntil: 'domcontentloaded' });
@@ -137,6 +138,7 @@ export async function runAction(page, opts) {
       }
 
       if (res.ok) {
+        consecutiveFail = 0;
         stats.done.push(t.user);
         if (verb === 'follow') {
           state.followed[t.user] = { at: new Date().toISOString(), from: url };
@@ -150,6 +152,11 @@ export async function runAction(page, opts) {
         state.skipped[t.user] = { at: new Date().toISOString(), reason: `HTTP ${res.status}` };
         saveState(state);
         onLog(`   ? ${t.user}: HTTP ${res.status} - skipped`);
+        if (++consecutiveFail >= 5) {
+          stats.stopped = `stopped: ${consecutiveFail} failures in a row (likely follow limit)`;
+          onLog(`   ! ${stats.stopped}`);
+          break;
+        }
       }
 
       await sleep(jitter(minDelay, maxDelay));

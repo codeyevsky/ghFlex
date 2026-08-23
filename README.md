@@ -51,10 +51,10 @@ following list, which is the usual target for `unfollow`.
 |--------|---------|---------|
 | `--browser` | `firefox` | `firefox` or `chromium` |
 | `--pages` | 3 | how many pages to walk |
-| `--max` | 30 | total follow cap for the run |
-| `--min-delay` / `--max-delay` | 4000 / 9000 | random wait in ms between follows |
+| `--max` | 30 | cap on follows/unfollows for the run |
+| `--min-delay` / `--max-delay` | 4000 / 9000 | random wait in ms between each follow/unfollow |
 | `--page-delay` | 6000 | wait in ms between pages |
-| `--dry-run` | off | list targets, follow nobody |
+| `--dry-run` | off | list targets, change nothing |
 | `--headless` | off | hide the browser window |
 | `--system-chromium` | off | use `/usr/bin/chromium` |
 | `--use-my-profile` | off | reuse your real Chromium profile (Chromium only) |
@@ -86,10 +86,12 @@ already there; close every Chromium window first, otherwise the profile is locke
 
 ## Rate limits
 
-Bulk following is exactly the kind of pattern GitHub watches for. The tool waits a
-random few seconds between follows and stops as soon as a response looks throttled
-(HTTP 429 or 403, or a secondary rate limit message). Lowering the delays and
-raising `--max` makes a limit or a temporary block more likely, so start small.
+Bulk following and unfollowing are exactly the kind of pattern GitHub watches for.
+Between each action the tool waits a random amount of time, controlled by
+`--min-delay` and `--max-delay` (and `--page-delay` between pages), and it stops as
+soon as a response looks throttled (HTTP 429 or 403, or a secondary rate limit
+message). Lowering the delays and raising `--max` makes a limit or a temporary
+block more likely, so start small.
 
 ## Tests
 

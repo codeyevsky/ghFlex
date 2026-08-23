@@ -18,11 +18,11 @@ Options:
                                 "user:following", "owner/repo:stargazers".
                                 Use "me" for yourself, e.g. "me:following".
   --pages <n>        How many pages to walk (default 3)
-  --max <n>          Total follow cap (default 30)
-  --min-delay <ms>   Min wait between follows (default 4000)
-  --max-delay <ms>   Max wait between follows (default 9000)
+  --max <n>          Cap on follows/unfollows for the run (default 30)
+  --min-delay <ms>   Min wait between actions (default 4000)
+  --max-delay <ms>   Max wait between actions (default 9000)
   --page-delay <ms>  Wait between page changes (default 6000)
-  --dry-run          Click nothing; just print who would be followed
+  --dry-run          Do nothing; just print who would be affected
   --headless         Hide the window (after login)
   --system-chromium  Use /usr/bin/chromium instead of Playwright's build
   --use-my-profile   Reuse your REAL browser profile (existing GitHub login).

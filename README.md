@@ -34,13 +34,18 @@ node src/cli.js run --url torvalds:followers --pages 3 --max 30 --dry-run
 # real run
 node src/cli.js run --url torvalds:followers --pages 20 --max 300
 
+# unfollow works the same way on any list page, most often your own following list
+node src/cli.js unfollow --url me:following --pages 20 --max 300 --dry-run
+node src/cli.js unfollow --url me:following --pages 20 --max 300
+
 # see what it did
 node src/cli.js stats
 ```
 
 The `--url` argument takes a full GitHub URL or one of these shortcuts:
 `user:followers`, `user:following`, `owner/repo:stargazers`,
-`owner/repo:watchers`.
+`owner/repo:watchers`. Use `me` to mean yourself, so `me:following` is your own
+following list, which is the usual target for `unfollow`.
 
 | Option | Default | Meaning |
 |--------|---------|---------|
@@ -56,12 +61,13 @@ The `--url` argument takes a full GitHub URL or one of these shortcuts:
 
 ## How it works
 
-Each follower row on GitHub contains both a follow form and an unfollow form, and
-only one is shown at a time. The tool reads the visible follow forms, which is the
-reliable signal for "not following yet", and submits each one with a POST that
-carries the form's authenticity token. Clicking the button directly is not
-enough, GitHub does not always submit the form on a synthetic click, so the POST
-is sent explicitly. Pagination follows the Next link by navigating to its href.
+Each row on GitHub contains both a follow form and an unfollow form, and only one
+is shown at a time. For `run` the tool reads the visible follow forms, which is the
+reliable signal for "not following yet"; for `unfollow` it reads the visible
+unfollow forms instead. Each target is submitted with a POST that carries the
+form's authenticity token. Clicking the button directly is not enough, GitHub does
+not always submit the form on a synthetic click, so the POST is sent explicitly.
+Pagination follows the Next link by navigating to its href.
 
 ## State
 

@@ -1,20 +1,22 @@
 #!/usr/bin/env node
 import { openBrowser, isLoggedIn, waitForLogin } from './browser.js';
-import { runFollow } from './follow.js';
+import { runAction } from './follow.js';
 import { loadState, DATA_DIR } from './state.js';
 
 const HELP = `gh-autofollow - follow everyone on a GitHub list page, then move to the next page.
 
 Usage:
-  ghaf login   [--browser firefox|chromium]
-  ghaf run     --url <github-url> [options]
+  ghaf login    [--browser firefox|chromium]
+  ghaf run      --url <github-url> [options]   follow everyone on the page(s)
+  ghaf unfollow --url <github-url> [options]   unfollow everyone on the page(s)
   ghaf stats
-  ghaf whoami  [--browser ...]
+  ghaf whoami   [--browser ...]
 
 Options:
   --browser <firefox|chromium>  Default: firefox
   --url <url>                   Start page. Shortcuts: "user:followers",
-                                "user:following", "owner/repo:stargazers"
+                                "user:following", "owner/repo:stargazers".
+                                Use "me" for yourself, e.g. "me:following".
   --pages <n>        How many pages to walk (default 3)
   --max <n>          Total follow cap (default 30)
   --min-delay <ms>   Min wait between follows (default 4000)
@@ -74,7 +76,7 @@ async function main() {
     console.log(`Followed:  ${f.length}`);
     console.log(`Skipped:   ${Object.keys(s.skipped).length}`);
     console.log(`Runs:      ${s.runs.length}`);
-    for (const r of s.runs.slice(-5)) console.log(`  ${r.at}  +${r.followed}  ${r.pages} pages  (${r.stopped})${r.dryRun ? ' [dry-run]' : ''}  ${r.url}`);
+    for (const r of s.runs.slice(-5)) { const n = r.mode === 'unfollow' ? `-${r.unfollowed ?? 0}` : `+${r.followed ?? 0}`; console.log(`  ${r.at}  ${n}  ${r.pages} pages  (${r.stopped})${r.dryRun ? ' [dry-run]' : ''}  ${r.url}`); }
     console.log('\nLast 10 follows:');
     for (const [u, m] of f.slice(-10)) console.log(`  ${u.padEnd(24)} ${m.at}`);
     return;
@@ -112,10 +114,7 @@ async function main() {
       return;
     }
 
-    if (cmd !== 'run') { console.log(HELP); process.exitCode = 1; return; }
-
-    const url = normalizeUrl(args.url === true ? null : args.url);
-    if (!url) { console.error('--url is required. Example: --url torvalds:followers'); process.exitCode = 1; return; }
+    if (cmd !== 'run' && cmd !== 'unfollow') { console.log(HELP); process.exitCode = 1; return; }
 
     const who = await isLoggedIn(page);
     if (!who) {
@@ -127,19 +126,30 @@ async function main() {
       process.exitCode = 1;
       return;
     }
-    console.log(`Account: ${who} · browser: ${browser}${useMyProfile ? ' (your profile)' : ''}${args['dry-run'] ? ' · DRY RUN' : ''}`);
 
-    const stats = await runFollow(page, {
+    // Resolve the "me" shortcut to the logged-in account.
+    let raw = args.url === true ? null : args.url;
+    if (raw === 'me') raw = `${who}:following`;
+    else if (typeof raw === 'string' && raw.startsWith('me:')) raw = who + raw.slice(2);
+    const url = normalizeUrl(raw);
+    if (!url) { console.error('--url is required. Example: --url me:following'); process.exitCode = 1; return; }
+
+    const mode = cmd === 'unfollow' ? 'unfollow' : 'follow';
+    console.log(`Account: ${who} · ${mode} · browser: ${browser}${useMyProfile ? ' (your profile)' : ''}${args['dry-run'] ? ' · DRY RUN' : ''}`);
+
+    const stats = await runAction(page, {
       url,
+      mode,
       maxPages: num(args.pages, 3),
-      maxFollows: num(args.max, 30),
+      maxActions: num(args.max, 30),
       minDelay: num(args['min-delay'], 4000),
       maxDelay: num(args['max-delay'], 9000),
       pageDelay: num(args['page-delay'], 6000),
       dryRun: !!args['dry-run'],
     });
 
-    console.log(`\nDone: ${stats.followed.length} followed, ${stats.skipped} skipped, ${stats.pages} pages - ${stats.stopped}`);
+    const verb = mode === 'unfollow' ? 'unfollowed' : 'followed';
+    console.log(`\nDone: ${stats.done.length} ${verb}, ${stats.skipped} skipped, ${stats.pages} pages - ${stats.stopped}`);
   } finally {
     await ctx.close().catch(() => {});
   }

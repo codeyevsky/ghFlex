@@ -173,8 +173,49 @@ func installMissing(st reqStatus) error {
 	return err
 }
 
+// retryOnRateLimit runs `once` with the remaining action budget and prints
+// `report` after each attempt. If a real run stops on a rate limit and the
+// user opts in, it waits 5 minutes and retries with the leftover budget until
+// the work finishes or the budget runs out — the process never exits on its
+// own. Because already-followed/starred entries no longer show their action
+// form, each retry naturally resumes where the last one stopped.
+func retryOnRateLimit(maxActions int, dryRun bool, in *bufio.Reader, interactive bool,
+	once func(remaining int) (*engine.RunStats, error),
+	report func(*engine.RunStats)) error {
+	optedIn := false
+	total := 0
+	for {
+		remaining := maxActions - total
+		if remaining <= 0 {
+			return nil
+		}
+		stats, err := once(remaining)
+		if err != nil {
+			return err
+		}
+		total += len(stats.Done)
+		report(stats)
+		if dryRun || !strings.Contains(stats.Stopped, "rate limit") {
+			return nil
+		}
+		rateLimitNotice(stats.Stopped)
+		if !optedIn {
+			if pick("wait and retry every 5 min until it clears?", []string{"no", "yes"}, 0, in, interactive) != "yes" {
+				return nil
+			}
+			optedIn = true
+		}
+		if maxActions-total <= 0 {
+			return nil
+		}
+		fmt.Println("  " + style.Tint(style.Cyan, "waiting 5 minutes, then retrying...  (Ctrl-C to stop)"))
+		time.Sleep(5 * time.Minute)
+		fmt.Println("  " + style.Tint(style.Cyan, "retrying now..."))
+	}
+}
+
 // runCommand runs one panel action against a fresh browser context.
-func runCommand(cmd string, a args) error {
+func runCommand(cmd string, a args, in *bufio.Reader, interactive bool) error {
 	browser := a.str("browser", "firefox")
 	_, isMode := engine.Modes[cmd]
 	isAction := isMode || cmd == "startree"
@@ -236,23 +277,23 @@ func runCommand(cmd string, a args) error {
 			dry = " | DRY RUN"
 		}
 		fmt.Printf("  Account: %s | startree from %s | browser: %s%s\n", who, root, browser, dry)
-		stats, err := engine.RunStarTree(s.Page, engine.TreeOptions{
-			RootUser:     root,
-			MaxDepth:     a.num("depth", 1),
-			PagesPerUser: a.num("pages", 1),
-			MaxActions:   a.num("max", 30),
-			MinDelay:     time.Duration(a.num("min-delay", 4000)) * time.Millisecond,
-			MaxDelay:     time.Duration(a.num("max-delay", 9000)) * time.Millisecond,
-			PageDelay:    time.Duration(a.num("page-delay", 6000)) * time.Millisecond,
-			DryRun:       a.bool("dry-run"),
-		})
-		if err != nil {
-			return err
-		}
-		fmt.Printf("\n  %s %d starred, %d skipped, %d users visited - %s\n", style.Tint(style.Green, "Done:"),
-			len(stats.Done), stats.Skipped, stats.Pages, stats.Stopped)
-		rateLimitNotice(stats.Stopped)
-		return nil
+		return retryOnRateLimit(a.num("max", 30), a.bool("dry-run"), in, interactive,
+			func(remaining int) (*engine.RunStats, error) {
+				return engine.RunStarTree(s.Page, engine.TreeOptions{
+					RootUser:     root,
+					MaxDepth:     a.num("depth", 1),
+					PagesPerUser: a.num("pages", 1),
+					MaxActions:   remaining,
+					MinDelay:     time.Duration(a.num("min-delay", 4000)) * time.Millisecond,
+					MaxDelay:     time.Duration(a.num("max-delay", 9000)) * time.Millisecond,
+					PageDelay:    time.Duration(a.num("page-delay", 6000)) * time.Millisecond,
+					DryRun:       a.bool("dry-run"),
+				})
+			},
+			func(stats *engine.RunStats) {
+				fmt.Printf("\n  %s %d starred, %d skipped, %d users visited - %s\n", style.Tint(style.Green, "Done:"),
+					len(stats.Done), stats.Skipped, stats.Pages, stats.Stopped)
+			})
 	}
 
 	// Resolve the "me" shortcut to the logged-in account.
@@ -281,23 +322,23 @@ func runCommand(cmd string, a args) error {
 	}
 	fmt.Printf("  Account: %s | %s | browser: %s%s%s\n", who, cmd, browser, profile, dry)
 
-	stats, err := engine.RunAction(s.Page, engine.RunOptions{
-		URL:        target,
-		Mode:       cmd,
-		MaxPages:   a.num("pages", 3),
-		MaxActions: a.num("max", 30),
-		MinDelay:   time.Duration(a.num("min-delay", 4000)) * time.Millisecond,
-		MaxDelay:   time.Duration(a.num("max-delay", 9000)) * time.Millisecond,
-		PageDelay:  time.Duration(a.num("page-delay", 6000)) * time.Millisecond,
-		DryRun:     a.bool("dry-run"),
-	})
-	if err != nil {
-		return err
-	}
-	fmt.Printf("\n  %s %d %s, %d skipped, %d pages - %s\n", style.Tint(style.Green, "Done:"),
-		len(stats.Done), engine.Modes[cmd].Past, stats.Skipped, stats.Pages, stats.Stopped)
-	rateLimitNotice(stats.Stopped)
-	return nil
+	return retryOnRateLimit(a.num("max", 30), a.bool("dry-run"), in, interactive,
+		func(remaining int) (*engine.RunStats, error) {
+			return engine.RunAction(s.Page, engine.RunOptions{
+				URL:        target,
+				Mode:       cmd,
+				MaxPages:   a.num("pages", 3),
+				MaxActions: remaining,
+				MinDelay:   time.Duration(a.num("min-delay", 4000)) * time.Millisecond,
+				MaxDelay:   time.Duration(a.num("max-delay", 9000)) * time.Millisecond,
+				PageDelay:  time.Duration(a.num("page-delay", 6000)) * time.Millisecond,
+				DryRun:     a.bool("dry-run"),
+			})
+		},
+		func(stats *engine.RunStats) {
+			fmt.Printf("\n  %s %d %s, %d skipped, %d pages - %s\n", style.Tint(style.Green, "Done:"),
+				len(stats.Done), engine.Modes[cmd].Past, stats.Skipped, stats.Pages, stats.Stopped)
+		})
 }
 
 // rateLimitNotice prints a clear, calm warning when a run stopped because
@@ -512,7 +553,7 @@ func panel() {
 			}
 		}
 
-		if err := safeRun(cmd, a); err != nil {
+		if err := safeRun(cmd, a, in, interactive); err != nil {
 			fmt.Fprintf(os.Stderr, "  %s\n", style.Tint(style.Red, fmt.Sprintf("error: %v", err)))
 		}
 		pause()
@@ -521,13 +562,13 @@ func panel() {
 
 // safeRun runs one command and turns any unexpected panic into an error, so a
 // crash in the browser layer can never take the whole panel down.
-func safeRun(cmd string, a args) (err error) {
+func safeRun(cmd string, a args, in *bufio.Reader, interactive bool) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("unexpected error: %v", r)
 		}
 	}()
-	return runCommand(cmd, a)
+	return runCommand(cmd, a, in, interactive)
 }
 
 func main() {

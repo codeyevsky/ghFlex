@@ -50,7 +50,7 @@ or build from a clone:
 ```bash
 git clone https://github.com/codeyevsky/ghFlex.git
 cd ghFlex
-go build -o ghflex .
+go build -o bin/ghflex .
 ```
 
 That is the only thing you ever type in a shell. Everything else — including
@@ -58,10 +58,10 @@ downloading the browser requirements — is done from inside the panel.
 
 ## First run
 
-Run the binary with no arguments:
+Run the binary with no arguments (`ghFlex` if you used `go install`):
 
 ```bash
-ghflex
+./bin/ghflex
 ```
 
 The first-time flow, all inside the panel:
@@ -125,8 +125,12 @@ cleanly, keeps whatever it already did, and prints a clear notice:
      before trying again to keep your account safe.
 ```
 
-You return to the panel and can pick up later. An unexpected error in any run
-is caught the same way, so the panel itself never dies.
+It then asks whether to **wait and retry every 5 minutes until the limit
+clears**. Choose `yes` and it keeps the browser open, waits 5 minutes, and
+retries with the leftover budget — already-followed/starred entries are
+skipped automatically, so it resumes where it stopped and never exits on its
+own (Ctrl-C to stop). Choose `no` and you return to the panel. An unexpected
+error in any run is caught the same way, so the panel itself never dies.
 
 The tool opens the target page, acts on every visible entry, waits the chosen
 delay, then moves to the next page. A browser window is visible the whole
@@ -232,7 +236,7 @@ To protect specific accounts or repos from ever being acted on, create
 ## Development
 
 ```bash
-go build -o ghflex .   # build
+go build -o bin/ghflex .   # build
 go test ./...          # run tests
 ```
 

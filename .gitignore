@@ -1,8 +1,14 @@
+# build output
+/bin/
 /ghflex
 /ghflex.exe
 /githubflex
 /githubflex.exe
+a.out
+
+# node leftovers from the old tool
 node_modules/
+
+# local runtime state (should live under ~/.local/share, never the repo)
 state.json
 blocklist.txt
-a.out

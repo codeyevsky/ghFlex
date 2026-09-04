@@ -3,9 +3,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/codeyevsky/ghFlex/releases"><img src="https://img.shields.io/github/v/release/codeyevsky/ghFlex?color=8957e5" alt="Release"></a>
-  <a href="https://github.com/codeyevsky/ghFlex/stargazers"><img src="https://img.shields.io/github/stars/codeyevsky/ghFlex?color=8957e5" alt="Stars"></a>
-  <img src="https://img.shields.io/github/license/codeyevsky/ghFlex?color=8957e5" alt="License">
+  <a href="https://github.com/codeyevsky/ghFlex/releases"><img src="https://img.shields.io/github/v/release/codeyevsky/ghFlex?color=8957e5&cacheSeconds=1800" alt="Release"></a>
+  <a href="https://github.com/codeyevsky/ghFlex/stargazers"><img src="https://img.shields.io/github/stars/codeyevsky/ghFlex?color=8957e5&cacheSeconds=1800" alt="Stars"></a>
+  <img src="https://img.shields.io/github/license/codeyevsky/ghFlex?color=8957e5&cacheSeconds=1800" alt="License">
   <img src="https://img.shields.io/badge/go-1.25%2B-8957e5" alt="Go 1.25+">
 </p>
 

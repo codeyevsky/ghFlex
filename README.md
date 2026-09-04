@@ -1,105 +1,267 @@
-# gh-autofollow
+<p align="center">
+  <img src="assets/logo.png" alt="githubFlex" width="520">
+</p>
 
-A small command line tool that walks a GitHub list page (followers, following,
-stargazers or watchers) and follows everyone on it, then moves on to the next
-page. It drives a real browser through Playwright, so it uses your normal logged
-in session and does not touch the GitHub API tokens. Works with Firefox and
-Chromium.
+# githubFlex
 
-## Why a browser instead of the API
+An interactive terminal tool for GitHub, written in Go. It walks GitHub list
+pages and acts on every entry: **follow** the people on a
+followers/following/stargazers page, **unfollow** them again, **star** every
+repo on someone's stars page, and **unstar** your own stars.
 
-The GitHub REST API is the obvious way to follow users, but it needs a personal
-access token with `user:follow` scope and it is easy to trip the abuse limits.
-Driving the same follow button a person would click keeps everything tied to the
-normal web session and makes the behaviour easy to watch while it runs.
+There are no subcommands or flags — you run one binary and everything happens
+inside an interactive panel. It drives a real browser through Playwright, so
+it uses your normal logged-in GitHub session and never asks for an API token.
+Works with Firefox and Chromium on Linux, macOS and Windows.
+
+```
+  ░█▀▀░▀█▀░▀█▀░█░█░█░█░█▀▄░█▀▀░█░░░█▀▀░█░█
+  ░█░█░░█░░░█░░█▀█░█░█░█▀▄░█▀▀░█░░░█▀▀░▄▀▄
+  ░▀▀▀░▀▀▀░░▀░░▀░▀░▀▀▀░▀▀░░▀░░░▀▀▀░▀▀▀░▀░▀
+
+ ============================================================
+  requirements: not checked -- pick 'setup' to check / download
+  data: ~/.local/share/githubflex
+
+  up/down (or j/k) to move, Enter to select
+
+   ->  setup     check / download requirements
+       login     save a GitHub session (opens a browser)
+       follow    follow everyone on a list page
+       unfollow  unfollow from a list page
+       star      star every repo on someone's stars page
+       unstar    unstar repos (usually your own stars)
+       startree  star tree: branch through repo owners' stars
+       stats     history and totals
+       whoami    which account is logged in
+       quit      exit
+```
+
+The banner is drawn with a purple gradient in the terminal. The panel
+itself sticks to plain ASCII (no box-drawing characters, so it renders
+correctly in any terminal or font) and is driven only with the **arrow
+keys** (or
+`j`/`k`): move with up/down and confirm with Enter. No other key triggers
+anything, so a stray keystroke can never start an action; leave through the
+`quit` entry (or Ctrl-C).
 
 ## Install
 
-```bash
-git clone git@github.com:codeyevsky/gh-autofollow.git
-cd gh-autofollow
-npm install
-npx playwright install firefox chromium
-```
-
-## Usage
+With Go 1.22+ installed:
 
 ```bash
-# log in once, the session is saved in a dedicated profile
-node src/cli.js login --browser firefox
-
-# dry run first, prints who would be followed without touching anything
-node src/cli.js run --url torvalds:followers --pages 3 --max 30 --dry-run
-
-# real run
-node src/cli.js run --url torvalds:followers --pages 20 --max 300
-
-# unfollow works the same way on any list page, most often your own following list
-node src/cli.js unfollow --url me:following --pages 20 --max 300 --dry-run
-node src/cli.js unfollow --url me:following --pages 20 --max 300
-
-# see what it did
-node src/cli.js stats
+go install github.com/codeyevsky/githubflex@latest
 ```
 
-The `--url` argument takes a full GitHub URL or one of these shortcuts:
-`user:followers`, `user:following`, `owner/repo:stargazers`,
-`owner/repo:watchers`. Use `me` to mean yourself, so `me:following` is your own
-following list, which is the usual target for `unfollow`.
-
-| Option | Default | Meaning |
-|--------|---------|---------|
-| `--browser` | `firefox` | `firefox` or `chromium` |
-| `--pages` | 3 | how many pages to walk |
-| `--max` | 30 | cap on follows/unfollows for the run |
-| `--min-delay` / `--max-delay` | 4000 / 9000 | random wait in ms between each follow/unfollow |
-| `--page-delay` | 6000 | wait in ms between pages |
-| `--dry-run` | off | list targets, change nothing |
-| `--headless` | off | hide the browser window |
-| `--system-chromium` | off | use `/usr/bin/chromium` |
-| `--use-my-profile` | off | reuse your real Chromium profile (Chromium only) |
-
-## How it works
-
-Each row on GitHub contains both a follow form and an unfollow form, and only one
-is shown at a time. For `run` the tool reads the visible follow forms, which is the
-reliable signal for "not following yet"; for `unfollow` it reads the visible
-unfollow forms instead. Each target is submitted with a POST that carries the
-form's authenticity token. Clicking the button directly is not enough, GitHub does
-not always submit the form on a synthetic click, so the POST is sent explicitly.
-Pagination follows the Next link by navigating to its href.
-
-## State
-
-Everything is kept under `~/.local/share/gh-autofollow/`:
-
-- `profiles/firefox` and `profiles/chromium` hold the browser sessions
-- `state.json` is a log of follows, skips and past runs
-- `blocklist.txt` is an optional list, one username per line, that is never touched
-
-## Authentication
-
-By default the tool runs its own browser profile, so you log in once with the
-`login` command and the session is remembered after that. With `--use-my-profile`
-on Chromium it drives your existing Chromium profile instead and reuses the login
-already there; close every Chromium window first, otherwise the profile is locked.
-
-## Rate limits
-
-Bulk following and unfollowing are exactly the kind of pattern GitHub watches for.
-Between each action the tool waits a random amount of time, controlled by
-`--min-delay` and `--max-delay` (and `--page-delay` between pages), and it stops as
-soon as a response looks throttled (HTTP 429 or 403, or a secondary rate limit
-message). Lowering the delays and raising `--max` makes a limit or a temporary
-block more likely, so start small.
-
-## Tests
+(the binary is named `githubflex`), or build from a clone:
 
 ```bash
-node test/fixture.test.mjs
+git clone https://github.com/codeyevsky/githubflex.git
+cd githubflex
+go build -o ghflex .
 ```
 
-## Note
+That is the only thing you ever type in a shell. Everything else — including
+downloading the browser requirements — is done from inside the panel.
 
-Automated following can violate GitHub's Acceptable Use Policies. Use it on your
-own account and at your own risk.
+## First run
+
+Run the binary with no arguments:
+
+```bash
+ghflex
+```
+
+The first-time flow, all inside the panel:
+
+1. **`setup`** — checks whether the requirements are already downloaded and
+   tells you what is missing:
+
+   ```
+     checking requirements...
+     Requirements:
+       playwright driver : OK
+       firefox           : missing
+       chromium          : missing
+     Download the missing pieces now? (Y/n):
+   ```
+
+   Answer `y` (or just press Enter) and it downloads the Playwright driver
+   and the browsers for your OS — a one-time download of a few hundred MB.
+   Re-run `setup` any time to re-check; the panel header also shows the
+   result of the last check.
+2. **`login`** — a browser window opens on github.com/login. Sign in
+   normally (2FA included). The panel detects the login and saves the session
+   in a dedicated profile, so you only do this once.
+3. Pick an action (`follow`, `unfollow`, `star`, `unstar`), answer the
+   prompts, watch it run.
+
+## How an action works
+
+Choosing `follow`, `unfollow`, `star` or `unstar` asks four questions, each
+with a default shown in brackets (press Enter to accept):
+
+| Prompt | Meaning | Default |
+| --- | --- | --- |
+| `browser` | `firefox` or `chromium` (arrow keys) | `firefox` |
+| `target` | **follow / star only** — whose list to walk (see below) | — |
+| `pages to walk` | how many list pages to go through (digits only) | `3` |
+| `max follows` / `max stars` / … | hard cap for this run, named per action (digits only) | `30` |
+| `speed` | delay preset (arrow keys) | `medium` |
+| `dry run` | `yes` = only print what would happen, touch nothing | `no` |
+
+The `speed` preset controls the pause between actions:
+
+| Preset | Between actions | Between pages |
+| --- | --- | --- |
+| `slow` | 2–4 s | 3 s |
+| `medium` | 0.6–1.4 s | 1 s |
+| `fast` | 0.15–0.45 s | 0.3 s |
+
+While moving the cursor onto `fast` (before you confirm), a live warning
+appears next to it that it can trip GitHub's rate limit sooner; `slow` is the
+cautious choice for large unattended runs.
+
+If GitHub does throttle the run, githubFlex **does not crash** — it stops
+cleanly, keeps whatever it already did, and prints a clear notice:
+
+```
+  !! GitHub usage limit reached (rate limited).
+     You've hit GitHub's action limit. Wait ~30 minutes
+     before trying again to keep your account safe.
+```
+
+You return to the panel and can pick up later. An unexpected error in any run
+is caught the same way, so the panel itself never dies. The tool opens the target page, acts on every visible
+entry, waits the chosen delay, then moves to the next page. A browser window
+is visible the whole time, so you can watch exactly what it does. Numeric
+prompts reject non-digit characters, and the target prompt only shows the
+shortcuts that make sense for the chosen action.
+
+**Always try a dry run first.** It lists who would be followed or which repos
+would be starred without doing anything.
+
+### Targets
+
+Only **follow** and **star** ask for a target, because they act on someone
+else's list. **unfollow** always walks your own following list and **unstar**
+your own stars, so they skip the target question and go straight to the
+`pages` prompt.
+
+The target prompt takes a full GitHub URL or one of these shortcuts:
+
+| Shortcut | Page it opens |
+| --- | --- |
+| `user:followers` | `github.com/user?tab=followers` |
+| `user:following` | `github.com/user?tab=following` |
+| `user:stars` | `github.com/user?tab=stars` |
+| `owner/repo:stargazers` | `github.com/owner/repo/stargazers` |
+| `owner/repo:watchers` | `github.com/owner/repo/watchers` |
+
+`me` always means the account you are logged in as:
+
+- `me:following` — your own following list (the usual target for **unfollow**)
+- `me:stars` — your own stars page (the usual target for **unstar**)
+
+Typical uses:
+
+- *Follow the people who follow someone*: action `follow`, target
+  `torvalds:followers`.
+- *Star the repos someone has starred*: action `star`, target
+  `torvalds:stars`.
+- *Undo it later*: action `unfollow` with `me:following`, or `unstar` with
+  `me:stars`.
+
+### startree: branching through the star graph
+
+`startree` walks the star graph breadth-first: it stars the repos the root
+user starred, and for every starred repo it queues the repo's **owner** and
+walks their stars page next, branching level by level:
+
+```
+  -> depth 0: stars of torvalds
+       [*] libgit2/libgit2  (1/30)
+       [*] user1/repo1     (2/30)
+      -> depth 1: stars of libgit2
+           [*] someone/rust-thing  (3/30)
+      -> depth 1: stars of user1
+           ...
+```
+
+Its prompts: root user, branch depth (`0` = only the root's stars), pages
+per user, max stars total, dry run. The total cap applies to the whole tree,
+so a small `max stars total` keeps a deep tree harmless; organizations can't
+star anything, so those branches just end quietly. Everything it stars is
+recorded and can be undone later with `unstar` on `me:stars`.
+
+### What each entry means while it runs
+
+```
+  [+] alice        followed        [*] owner/repo   starred
+  [-] alice        unfollowed      [x] owner/repo   unstarred
+  ? name: HTTP 404 - skipped       [dry-run] would follow name
+```
+
+## Stats
+
+The `stats` entry shows totals, the last five runs and the last ten
+follows/stars, all read from local state — no browser needed.
+
+## Safety and limits
+
+- Actions are spaced 4–9 seconds apart, with a longer pause between pages.
+- The run **stops immediately** when GitHub answers with a limit response
+  (HTTP 422/429/403, or an abuse / rate-limit page), and after 5 failures in
+  a row.
+- The account whose profile is being walked is never followed/unfollowed.
+- Automating your account is subject to GitHub's Terms of Service; large
+  unattended runs can get an account flagged regardless of tooling. Keep
+  `max actions` modest, keep the built-in delays, and prefer a dry run first.
+
+## Where data lives
+
+Everything is stored under `$XDG_DATA_HOME/githubflex` (default
+`~/.local/share/githubflex`; if you upgraded from the old `gh-autofollow`
+tool, its directory is renamed to `githubflex` automatically on first run;
+override with the `GITHUBFLEX_HOME` environment variable):
+
+| File | Contents |
+| --- | --- |
+| `state.json` | followed users, starred repos, run history |
+| `blocklist.txt` | one user or `owner/repo` per line — these are never touched |
+| `profiles/` | the dedicated browser profiles holding your GitHub session |
+
+To protect specific accounts or repos from ever being acted on, create
+`blocklist.txt` and add one name per line (`#` starts a comment).
+
+## Development
+
+```bash
+go build -o ghflex .   # build
+go test ./...          # run tests
+```
+
+The fixture test drives a local HTML page through Playwright Firefox: rows
+and repo cards whose follow/star form is visible are picked, hidden ones are
+skipped. It skips itself automatically if the requirements have not been
+downloaded yet.
+
+Layout:
+
+| File | Role |
+| --- | --- |
+| `main.go` | interactive panel, prompts, requirement check |
+| `actions.go` | the page-walking engine (follow/unfollow/star/unstar) |
+| `browser.go` | Playwright launch, persistent profiles, login detection |
+| `state.go` | state file, blocklist, data directory |
+
+## Troubleshooting
+
+- **"playwright driver not ready"** — run the `setup` entry to download the
+  requirements.
+- **"not logged in"** — run the `login` entry and sign in once; the session
+  persists between runs.
+- **Login window closed too early / session expired** — just run
+  `login` again.
+- **Corporate proxy / mirror**: the downloads honor the standard
+  `PLAYWRIGHT_DOWNLOAD_HOST`, npm registry and `NODE_MIRROR` overrides.

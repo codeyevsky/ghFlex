@@ -11,4 +11,12 @@
   <form action="/users/follow?target=carol" method="post"><input name="authenticity_token" value="tok-c"><button type="submit">Follow</button></form>
   <form action="/users/unfollow?target=carol" method="post" class="hidden"><input name="authenticity_token" value="tok-c"><button type="submit">Unfollow</button></form>
 </div>
+<div class="col-12"><a href="/octo/rocket">octo/rocket</a>
+  <form action="/octo/rocket/star" method="post"><input name="authenticity_token" value="tok-r1"><button type="submit">Star</button></form>
+  <form action="/octo/rocket/unstar" method="post" class="hidden"><input name="authenticity_token" value="tok-r1"><button type="submit">Unstar</button></form>
+</div>
+<div class="col-12"><a href="/octo/comet">octo/comet</a>
+  <form action="/octo/comet/star" method="post" class="hidden"><input name="authenticity_token" value="tok-r2"><button type="submit">Star</button></form>
+  <form action="/octo/comet/unstar" method="post"><input name="authenticity_token" value="tok-r2"><button type="submit">Unstar</button></form>
+</div>
 </body></html>

@@ -285,23 +285,69 @@ func runCommand(cmd string, a args, in *bufio.Reader, interactive bool) error {
 			dry = " | DRY RUN"
 		}
 		fmt.Printf("  Account: %s | startree from %s | browser: %s%s\n", who, root, browser, dry)
-		return retryOnRateLimit(a.num("max", 30), a.bool("dry-run"), in, interactive,
-			func(remaining int) (*engine.RunStats, error) {
-				return engine.RunStarTree(s.Page, engine.TreeOptions{
-					RootUser:     root,
-					MaxDepth:     a.num("depth", 1),
-					PagesPerUser: a.num("pages", 1),
-					MaxActions:   remaining,
-					MinDelay:     time.Duration(a.num("min-delay", 4000)) * time.Millisecond,
-					MaxDelay:     time.Duration(a.num("max-delay", 9000)) * time.Millisecond,
-					PageDelay:    time.Duration(a.num("page-delay", 6000)) * time.Millisecond,
-					DryRun:       a.bool("dry-run"),
-				})
-			},
-			func(stats *engine.RunStats) {
-				fmt.Printf("\n  %s %d starred, %d skipped, %d users visited - %s\n", style.Tint(style.Green, "Done:"),
-					len(stats.Done), stats.Skipped, stats.Pages, stats.Stopped)
+		maxTotal := a.num("max", 30)
+		dryRun := a.bool("dry-run")
+		total := 0
+		rlOptedIn := false
+		for {
+			remaining := maxTotal - total
+			if remaining <= 0 {
+				break
+			}
+			stats, err := engine.RunStarTree(s.Page, engine.TreeOptions{
+				RootUser:     root,
+				MaxDepth:     a.num("depth", 1),
+				PagesPerUser: a.num("pages", 1),
+				MaxActions:   remaining,
+				MinDelay:     time.Duration(a.num("min-delay", 4000)) * time.Millisecond,
+				MaxDelay:     time.Duration(a.num("max-delay", 9000)) * time.Millisecond,
+				PageDelay:    time.Duration(a.num("page-delay", 6000)) * time.Millisecond,
+				DryRun:       dryRun,
 			})
+			if err != nil {
+				return err
+			}
+			total += len(stats.Done)
+			fmt.Printf("\n  %s %d starred, %d skipped, %d users visited - %s\n", style.Tint(style.Green, "Done:"),
+				len(stats.Done), stats.Skipped, stats.Pages, stats.Stopped)
+
+			if strings.Contains(stats.Stopped, "rate limit") {
+				rateLimitNotice(stats.Stopped)
+				if !rlOptedIn {
+					if pick("wait and retry every 5 min until it clears?", []string{"no", "yes"}, 0, in, interactive) != "yes" {
+						break
+					}
+					rlOptedIn = true
+				}
+				if maxTotal-total <= 0 {
+					break
+				}
+				fmt.Println("  " + style.Tint(style.Cyan, "waiting 5 minutes, then retrying...  (Ctrl-C to stop)"))
+				time.Sleep(5 * time.Minute)
+				fmt.Println("  " + style.Tint(style.Cyan, "retrying now..."))
+				continue
+			}
+
+			// Target reached, or a dry run (never grows), so stop.
+			if total >= maxTotal || dryRun {
+				break
+			}
+			// The tree ran dry before the target; offer a fresh root to keep going.
+			fmt.Printf("  %s\n", style.Tint(style.Yellow, fmt.Sprintf("ran out of new repos (%d/%d starred).", total, maxTotal)))
+			if pick("try another root user?", []string{"no", "yes"}, 0, in, interactive) != "yes" {
+				break
+			}
+			fmt.Print("  root user (whose stars to branch from next): ")
+			line, err := in.ReadString('\n')
+			if err != nil {
+				break
+			}
+			root = sanitizeInput(line)
+			if root == "me" || root == "" {
+				break
+			}
+		}
+		return nil
 	}
 
 	raw := a.opts["url"]

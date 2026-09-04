@@ -217,6 +217,11 @@ small `max stars total` keeps a deep tree harmless. Organizations can't star
 anything, so those branches just end quietly. Everything it stars is recorded
 and can be undone later with `unstar` on `me:stars`.
 
+If the tree runs dry before the target is reached (no new repos left to star),
+it asks whether to continue from **another root user**, and picks up with the
+leftover budget. Already-starred repos are skipped, so you keep filling the
+target without re-doing work.
+
 ### What each entry means while it runs
 
 ```

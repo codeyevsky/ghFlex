@@ -391,8 +391,8 @@ var menuItems = []menuItem{
 }
 
 var targetPrompt = map[string]string{
-	"follow": "who to follow  (e.g. username:followers, username:following)",
-	"star":   "whose stars to star  (e.g. username:stars, owner/repo:stargazers)",
+	"follow": "who to follow  (e.g. username, username:following, owner/repo:stargazers)",
+	"star":   "whose stars to star  (e.g. username  or  username:stars)",
 }
 
 var speedPreset = map[string][3]int{

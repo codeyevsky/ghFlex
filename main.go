@@ -213,7 +213,6 @@ func retryOnRateLimit(maxActions int, dryRun bool, in *bufio.Reader, interactive
 	}
 }
 
-// runCommand runs one panel action against a fresh browser context.
 func runCommand(cmd string, a args, in *bufio.Reader, interactive bool) error {
 	browser := a.str("browser", "firefox")
 	_, isMode := engine.Modes[cmd]
@@ -295,7 +294,6 @@ func runCommand(cmd string, a args, in *bufio.Reader, interactive bool) error {
 			})
 	}
 
-	// Resolve the "me" shortcut to the logged-in account.
 	raw := a.opts["url"]
 	if raw == "me" {
 		if cmd == "star" || cmd == "unstar" {
@@ -340,8 +338,6 @@ func runCommand(cmd string, a args, in *bufio.Reader, interactive bool) error {
 		})
 }
 
-// rateLimitNotice prints a clear, calm warning when a run stopped because
-// GitHub throttled it, instead of the process just ending abruptly.
 func rateLimitNotice(stopped string) {
 	if !strings.Contains(stopped, "rate limit") {
 		return
@@ -366,27 +362,21 @@ var menuItems = []menuItem{
 	{"quit", "exit"},
 }
 
-// Only follow/star ask for a target (they act on someone else's list);
-// unfollow/unstar always work on your own list, so they don't appear here.
 var targetPrompt = map[string]string{
 	"follow": "who to follow  (e.g. username:followers, username:following)",
 	"star":   "whose stars to star  (e.g. username:stars, owner/repo:stargazers)",
 }
 
-// Delay presets: {min, max, page} in milliseconds. "medium" is the default,
-// "fast" trades safety for speed, "slow" is the most cautious.
 var speedPreset = map[string][3]int{
 	"slow":   {2000, 4000, 3000},
 	"medium": {600, 1400, 1000},
 	"fast":   {150, 450, 300},
 }
 
-// Order shown in the chooser and the index highlighted first (medium).
 var speedOptions = []string{"slow", "medium", "fast"}
 
 const speedDefaultIdx = 1
 
-// max prompt label per mode, so it reads "max follows" / "max stars" etc.
 var maxLabel = map[string]string{
 	"follow":   "max follows",
 	"unfollow": "max unfollows",
@@ -428,8 +418,6 @@ func panel() {
 	yes := func(q, def string) bool {
 		return strings.HasPrefix(strings.ToLower(ask(q, def)), "y")
 	}
-	// askInt keeps only digits, so letters or symbols can't slip into a numeric
-	// field; an empty result falls back to the default.
 	askInt := func(q string, def int) string {
 		v := digitsRe.ReplaceAllString(ask(q, strconv.Itoa(def)), "")
 		if v == "" {
@@ -437,8 +425,6 @@ func panel() {
 		}
 		return v
 	}
-	// askTarget requires a value (follow/star have no "your own" default), so an
-	// action never starts without a target.
 	askTarget := func(cmd string) string {
 		for {
 			v := ask(targetPrompt[cmd], "")
@@ -453,8 +439,6 @@ func panel() {
 			waitEnter(in)
 		}
 	}
-	// Requirements are only probed when the user picks "setup"; the header
-	// just reflects the last check of this session.
 	var st *reqStatus
 	reqLine := func() string {
 		if st == nil {
@@ -466,8 +450,6 @@ func panel() {
 		return style.Tint(style.Red, "MISSING") + style.Tint(style.Dim, " -- pick 'setup' to download")
 	}
 
-	// The panel unrolls line by line the first time it appears; later redraws
-	// are instant so returning from an action isn't slowed down.
 	firstReveal := style.On && interactive
 	for {
 		clearScreen(interactive)
@@ -559,8 +541,6 @@ func panel() {
 	}
 }
 
-// safeRun runs one command and turns any unexpected panic into an error, so a
-// crash in the browser layer can never take the whole panel down.
 func safeRun(cmd string, a args, in *bufio.Reader, interactive bool) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -571,8 +551,6 @@ func safeRun(cmd string, a args, in *bufio.Reader, interactive bool) (err error)
 }
 
 func main() {
-	// githubFlex is fully interactive: no subcommands, everything happens in
-	// the panel.
 	if len(os.Args) > 1 {
 		fmt.Println("githubFlex has no subcommands; everything is driven from the interactive panel.")
 	}

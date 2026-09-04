@@ -2,6 +2,13 @@
   <img src="assets/logo.png" alt="githubFlex" width="520">
 </p>
 
+<p align="center">
+  <a href="https://github.com/codeyevsky/ghFlex/releases"><img src="https://img.shields.io/github/v/release/codeyevsky/ghFlex?color=8957e5" alt="Release"></a>
+  <a href="https://github.com/codeyevsky/ghFlex/stargazers"><img src="https://img.shields.io/github/stars/codeyevsky/ghFlex?color=8957e5" alt="Stars"></a>
+  <img src="https://img.shields.io/github/license/codeyevsky/ghFlex?color=8957e5" alt="License">
+  <img src="https://img.shields.io/badge/go-1.25%2B-8957e5" alt="Go 1.25+">
+</p>
+
 # githubFlex
 
 githubFlex is an interactive terminal tool that makes it easy to **"flex"** on
@@ -46,6 +53,24 @@ then asks you to restart githubFlex. If you built from a clone instead, run:
 
 ```bash
 git pull && go build -o bin/ghflex .
+```
+
+## Releases
+
+Every tagged version is on the [Releases page](https://github.com/codeyevsky/ghFlex/releases)
+with prebuilt binaries for Linux, macOS and Windows. Download the one for your
+OS, or install a specific version with Go:
+
+```bash
+go install github.com/codeyevsky/ghFlex@v0.1.0
+```
+
+Maintainers cut a release by pushing a version tag; GitHub Actions then builds
+the binaries and publishes the release automatically:
+
+```bash
+git tag v0.1.1
+git push origin v0.1.1
 ```
 
 ## First run

@@ -8,7 +8,7 @@ require (
 )
 
 require (
-	github.com/deckarep/golang-set/v2 v2.8.0 
-	github.com/go-stack/stack v1.8.1
-	golang.org/x/sys v0.47.0 
+	github.com/deckarep/golang-set/v2 v2.8.0 // indirect
+	github.com/go-stack/stack v1.8.1 // indirect
+	golang.org/x/sys v0.47.0 // indirect
 )

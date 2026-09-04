@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/codeyevsky/ghFlex/internal/engine"
+	"github.com/codeyevsky/ghFlex/internal/style"
 	"github.com/mxschmitt/playwright-go"
 	"golang.org/x/term"
 )
@@ -61,7 +63,7 @@ func normalizeURL(raw string) string {
 }
 
 func showStats() {
-	s := LoadState()
+	s := engine.LoadState()
 	fmt.Printf("  Followed:  %d\n", len(s.Followed))
 	fmt.Printf("  Starred:   %d\n", len(s.Starred))
 	fmt.Printf("  Skipped:   %d\n", len(s.Skipped))
@@ -81,7 +83,7 @@ func showStats() {
 		}
 		fmt.Printf("    %s  %-8s %s%d  %d pages  (%s)%s  %s\n", r.At, r.Mode, sign, r.Count, r.Pages, r.Stopped, dry, r.URL)
 	}
-	printLast := func(title string, m map[string]Entry, width int) {
+	printLast := func(title string, m map[string]engine.Entry, width int) {
 		if len(m) == 0 {
 			return
 		}
@@ -138,9 +140,9 @@ func checkRequirements() reqStatus {
 func printStatus(st reqStatus) {
 	mark := func(ok bool) string {
 		if ok {
-			return tint(cGreen, "OK")
+			return style.Tint(style.Green, "OK")
 		}
-		return tint(cRed, "missing")
+		return style.Tint(style.Red, "missing")
 	}
 	fmt.Println("  Requirements:")
 	fmt.Printf("    playwright driver : %s\n", mark(st.Driver))
@@ -174,10 +176,10 @@ func installMissing(st reqStatus) error {
 // runCommand runs one panel action against a fresh browser context.
 func runCommand(cmd string, a args) error {
 	browser := a.str("browser", "firefox")
-	_, isMode := Modes[cmd]
+	_, isMode := engine.Modes[cmd]
 	isAction := isMode || cmd == "startree"
 
-	s, err := OpenBrowser(BrowserOpts{
+	s, err := engine.OpenBrowser(engine.BrowserOpts{
 		Browser:      browser,
 		Headless:     isAction && a.bool("headless"),
 		System:       a.bool("system-chromium"),
@@ -189,7 +191,7 @@ func runCommand(cmd string, a args) error {
 	defer s.Close()
 
 	if cmd == "login" {
-		if who := IsLoggedIn(s); who != "" {
+		if who := engine.IsLoggedIn(s); who != "" {
 			fmt.Printf("  Already logged in as %s. You can close the window.\n", who)
 			return nil
 		}
@@ -199,7 +201,7 @@ func runCommand(cmd string, a args) error {
 			return err
 		}
 		fmt.Println("  Sign in to GitHub in the browser (including 2FA). This closes once login is detected...")
-		who, err := WaitForLogin(s, 5*time.Minute)
+		who, err := engine.WaitForLogin(s, 5*time.Minute)
 		if err != nil {
 			return err
 		}
@@ -208,7 +210,7 @@ func runCommand(cmd string, a args) error {
 	}
 
 	if cmd == "whoami" {
-		if who := IsLoggedIn(s); who != "" {
+		if who := engine.IsLoggedIn(s); who != "" {
 			fmt.Printf("  Logged in as %s\n", who)
 		} else {
 			fmt.Println("  Not logged in. Use the login option first.")
@@ -216,7 +218,7 @@ func runCommand(cmd string, a args) error {
 		return nil
 	}
 
-	who := IsLoggedIn(s)
+	who := engine.IsLoggedIn(s)
 	if who == "" {
 		if a.bool("use-my-profile") {
 			return fmt.Errorf("not logged in in your real profile. Open GitHub there and sign in once, or use the login option")
@@ -234,7 +236,7 @@ func runCommand(cmd string, a args) error {
 			dry = " | DRY RUN"
 		}
 		fmt.Printf("  Account: %s | startree from %s | browser: %s%s\n", who, root, browser, dry)
-		stats, err := RunStarTree(s.Page, TreeOptions{
+		stats, err := engine.RunStarTree(s.Page, engine.TreeOptions{
 			RootUser:     root,
 			MaxDepth:     a.num("depth", 1),
 			PagesPerUser: a.num("pages", 1),
@@ -247,7 +249,7 @@ func runCommand(cmd string, a args) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("\n  %s %d starred, %d skipped, %d users visited - %s\n", tint(cGreen, "Done:"),
+		fmt.Printf("\n  %s %d starred, %d skipped, %d users visited - %s\n", style.Tint(style.Green, "Done:"),
 			len(stats.Done), stats.Skipped, stats.Pages, stats.Stopped)
 		rateLimitNotice(stats.Stopped)
 		return nil
@@ -279,7 +281,7 @@ func runCommand(cmd string, a args) error {
 	}
 	fmt.Printf("  Account: %s | %s | browser: %s%s%s\n", who, cmd, browser, profile, dry)
 
-	stats, err := RunAction(s.Page, RunOptions{
+	stats, err := engine.RunAction(s.Page, engine.RunOptions{
 		URL:        target,
 		Mode:       cmd,
 		MaxPages:   a.num("pages", 3),
@@ -292,8 +294,8 @@ func runCommand(cmd string, a args) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("\n  %s %d %s, %d skipped, %d pages - %s\n", tint(cGreen, "Done:"),
-		len(stats.Done), Modes[cmd].Past, stats.Skipped, stats.Pages, stats.Stopped)
+	fmt.Printf("\n  %s %d %s, %d skipped, %d pages - %s\n", style.Tint(style.Green, "Done:"),
+		len(stats.Done), engine.Modes[cmd].Past, stats.Skipped, stats.Pages, stats.Stopped)
 	rateLimitNotice(stats.Stopped)
 	return nil
 }
@@ -305,10 +307,10 @@ func rateLimitNotice(stopped string) {
 		return
 	}
 	fmt.Println()
-	fmt.Println("  " + tint(cRed, "!! GitHub usage limit reached (rate limited)."))
-	fmt.Println("  " + tint(cYellow, "   You've hit GitHub's action limit. Wait ~30 minutes"))
-	fmt.Println("  " + tint(cYellow, "   before trying again to keep your account safe."))
-	fmt.Println("  " + tint(cDim, "   Nothing crashed - your progress so far is saved."))
+	fmt.Println("  " + style.Tint(style.Red, "!! GitHub usage limit reached (rate limited)."))
+	fmt.Println("  " + style.Tint(style.Yellow, "   You've hit GitHub's action limit. Wait ~30 minutes"))
+	fmt.Println("  " + style.Tint(style.Yellow, "   before trying again to keep your account safe."))
+	fmt.Println("  " + style.Tint(style.Dim, "   Nothing crashed - your progress so far is saved."))
 }
 
 var menuItems = []menuItem{
@@ -403,7 +405,7 @@ func panel() {
 			if v != "" {
 				return v
 			}
-			fmt.Println("  " + tint(cRed, "a target is required, e.g. username:followers"))
+			fmt.Println("  " + style.Tint(style.Red, "a target is required, e.g. username:followers"))
 		}
 	}
 	pause := func() {
@@ -416,22 +418,22 @@ func panel() {
 	var st *reqStatus
 	reqLine := func() string {
 		if st == nil {
-			return tint(cYellow, "not checked") + tint(cDim, " -- pick 'setup' to check / download")
+			return style.Tint(style.Yellow, "not checked") + style.Tint(style.Dim, " -- pick 'setup' to check / download")
 		}
 		if st.ok() {
-			return tint(cGreen, "OK")
+			return style.Tint(style.Green, "OK")
 		}
-		return tint(cRed, "MISSING") + tint(cDim, " -- pick 'setup' to download")
+		return style.Tint(style.Red, "MISSING") + style.Tint(style.Dim, " -- pick 'setup' to download")
 	}
 
 	// The panel unrolls line by line the first time it appears; later redraws
 	// are instant so returning from an action isn't slowed down.
-	firstReveal := colorOn && interactive
+	firstReveal := style.On && interactive
 	for {
 		clearScreen(interactive)
 		printBanner(firstReveal)
 		revealLn("   requirements: "+reqLine(), firstReveal)
-		revealLn("   data: "+tint(cDim, DataDir()), firstReveal)
+		revealLn("   data: "+style.Tint(style.Dim, engine.DataDir()), firstReveal)
 
 		idx, ok := selectMenu(menuItems, in, interactive, firstReveal)
 		firstReveal = false
@@ -446,7 +448,7 @@ func panel() {
 		}
 
 		fmt.Println()
-		flushLine("  ", fmt.Sprintf("==[ %s ]%s", cmd, strings.Repeat("=", 50-len(cmd))), cPurple)
+		flushLine("  ", fmt.Sprintf("==[ %s ]%s", cmd, strings.Repeat("=", 50-len(cmd))), style.Purple)
 		fmt.Println()
 
 		switch cmd {
@@ -457,7 +459,7 @@ func panel() {
 			printStatus(cur)
 			if !cur.ok() && yes("Download the missing pieces now? (Y/n)", "y") {
 				if err := installMissing(cur); err != nil {
-					fmt.Fprintf(os.Stderr, "  %s\n", tint(cRed, fmt.Sprintf("error: %v", err)))
+					fmt.Fprintf(os.Stderr, "  %s\n", style.Tint(style.Red, fmt.Sprintf("error: %v", err)))
 				} else {
 					cur = checkRequirements()
 					st = &cur
@@ -482,7 +484,7 @@ func panel() {
 			sp := pickHint("speed", speedOptions, hints, speedDefaultIdx, in, interactive)
 			applySpeed(&a, sp)
 		}
-		if _, isMode := Modes[cmd]; isMode {
+		if _, isMode := engine.Modes[cmd]; isMode {
 			// follow/star act on someone else's list, so they need a target;
 			// unfollow/unstar can only touch your own, so they skip the question.
 			switch cmd {
@@ -511,7 +513,7 @@ func panel() {
 		}
 
 		if err := safeRun(cmd, a); err != nil {
-			fmt.Fprintf(os.Stderr, "  %s\n", tint(cRed, fmt.Sprintf("error: %v", err)))
+			fmt.Fprintf(os.Stderr, "  %s\n", style.Tint(style.Red, fmt.Sprintf("error: %v", err)))
 		}
 		pause()
 	}
@@ -534,6 +536,6 @@ func main() {
 	if len(os.Args) > 1 {
 		fmt.Println("githubFlex has no subcommands; everything is driven from the interactive panel.")
 	}
-	MigrateData()
+	engine.MigrateData()
 	panel()
 }

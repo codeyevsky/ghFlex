@@ -8,31 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/codeyevsky/ghFlex/internal/style"
 	"golang.org/x/term"
 )
-
-
-// colorOn gates every escape sequence that is purely cosmetic: piped output
-// stays plain so scripts and tests see clean text.
-var colorOn = term.IsTerminal(int(os.Stdout.Fd()))
-
-const (
-	cLilac  = "38;5;177"
-	cPurple = "38;5;135"
-	cDeep   = "38;5;93"
-	cGreen  = "38;5;114"
-	cRed    = "38;5;203"
-	cYellow = "38;5;221"
-	cCyan   = "38;5;117"
-	cDim    = "2"
-)
-
-func tint(code, s string) string {
-	if !colorOn {
-		return s
-	}
-	return "\x1b[" + code + "m" + s + "\x1b[0m"
-}
 
 var ansiRe = regexp.MustCompile(`\x1b\[[0-9;]*[A-Za-z~]|\x1b.`)
 
@@ -95,7 +73,7 @@ func animateBanner() {
 // flushLine reveals one line left to right with the same sweep the banner
 // uses; used for section headers so opening a section animates too.
 func flushLine(indent, text, code string) {
-	if !colorOn {
+	if !style.On {
 		fmt.Println(indent + text)
 		return
 	}
@@ -129,12 +107,12 @@ func revealLn(s string, reveal bool) {
 
 func printBanner(reveal bool) {
 	fmt.Println()
-	if colorOn && !bannerShown {
+	if style.On && !bannerShown {
 		animateBanner()
 		bannerShown = true
 	} else {
 		for i, l := range banner {
-			if colorOn {
+			if style.On {
 				fmt.Printf("  \x1b[38;5;%dm%s\x1b[0m\n", bannerColors[i%len(bannerColors)], l)
 			} else {
 				fmt.Println("  " + l)
@@ -142,7 +120,7 @@ func printBanner(reveal bool) {
 		}
 	}
 	fmt.Println()
-	revealLn("  "+tint(cDeep, strings.Repeat("=", 60)), reveal)
+	revealLn("  "+style.Tint(style.Deep, strings.Repeat("=", 60)), reveal)
 }
 
 func clearScreen(interactive bool) {
@@ -166,7 +144,7 @@ func renderMenu(items []menuItem, sel int, redraw bool) {
 	}
 	for i, it := range items {
 		if i == sel {
-			if colorOn {
+			if style.On {
 				fmt.Printf("\x1b[2K   \x1b[38;5;177m->\x1b[0m \x1b[48;5;93;38;5;231;1m %s \x1b[0m\r\n", menuLine(it))
 			} else {
 				fmt.Printf("\x1b[2K   -> \x1b[7m %s \x1b[0m\r\n", menuLine(it))
@@ -221,7 +199,7 @@ func pickHint(label string, options, hints []string, defIdx int, in *bufio.Reade
 		fmt.Printf("\r\x1b[2K  %s:", label)
 		for i, o := range options {
 			if i == sel {
-				if colorOn {
+				if style.On {
 					fmt.Printf(" \x1b[48;5;93;38;5;231;1m %s \x1b[0m", o)
 				} else {
 					fmt.Printf(" \x1b[7m %s \x1b[0m", o)
@@ -231,7 +209,7 @@ func pickHint(label string, options, hints []string, defIdx int, in *bufio.Reade
 			}
 		}
 		if sel < len(hints) && hints[sel] != "" {
-			fmt.Print("   " + tint(cYellow, "! "+hints[sel]))
+			fmt.Print("   " + style.Tint(style.Yellow, "! "+hints[sel]))
 		}
 	}
 	render()
@@ -256,8 +234,8 @@ func pickHint(label string, options, hints []string, defIdx int, in *bufio.Reade
 		case b[0] == '\r' || b[0] == '\n' || b[0] == 3:
 			// Leave a clean, permanent line so the next output can't collide
 			// with a half-erased prompt.
-			if colorOn {
-				fmt.Printf("\r\x1b[2K  %s: \x1b[%sm%s\x1b[0m\r\n", label, cPurple, options[sel])
+			if style.On {
+				fmt.Printf("\r\x1b[2K  %s: \x1b[%sm%s\x1b[0m\r\n", label, style.Purple, options[sel])
 			} else {
 				fmt.Printf("\r  %s: %s\r\n", label, options[sel])
 			}
@@ -278,7 +256,7 @@ func pickHint(label string, options, hints []string, defIdx int, in *bufio.Reade
 // waitEnter waits for the Enter key in raw mode without echoing, so pressing
 // arrows or any other key can't spill escape codes onto the screen.
 func waitEnter(in *bufio.Reader) {
-	fmt.Print("\n  " + tint(cDim, "[Enter] back to menu") + " ")
+	fmt.Print("\n  " + style.Tint(style.Dim, "[Enter] back to menu") + " ")
 	fd := int(os.Stdin.Fd())
 	old, err := term.MakeRaw(fd)
 	if err != nil {
@@ -337,7 +315,7 @@ func selectMenu(items []menuItem, in *bufio.Reader, interactive, reveal bool) (i
 
 	sel := 0
 	fmt.Print("\r\n")
-	hint := "   " + tint(cDim, "up/down (or j/k) to move, Enter to select") + "\r\n\r\n"
+	hint := "   " + style.Tint(style.Dim, "up/down (or j/k) to move, Enter to select") + "\r\n\r\n"
 	if reveal {
 		time.Sleep(revealPause)
 		fmt.Print(hint)

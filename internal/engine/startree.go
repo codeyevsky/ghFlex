@@ -56,7 +56,7 @@ func RunStarTree(page playwright.Page, o TreeOptions) (*RunStats, error) {
 			log(indent + "     ! " + err.Error())
 			continue
 		}
-		stats.Pages++ // counts users actually visited
+		stats.Pages++
 
 		for p := 1; p <= o.PagesPerUser; p++ {
 			targets, err := collectTargets(page, skip, "star", "repo")

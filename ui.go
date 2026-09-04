@@ -11,6 +11,7 @@ import (
 	"golang.org/x/term"
 )
 
+
 // colorOn gates every escape sequence that is purely cosmetic: piped output
 // stays plain so scripts and tests see clean text.
 var colorOn = term.IsTerminal(int(os.Stdout.Fd()))
@@ -48,19 +49,13 @@ func sanitizeInput(s string) string {
 	return strings.TrimSpace(b.String())
 }
 
-// Pure ASCII everywhere: the panel must render identically in any font or
-// terminal, so no unicode box-drawing characters.
-
-// The Pagga wordmark.
 var banner = []string{
 	"░█▀▀░▀█▀░▀█▀░█░█░█░█░█▀▄░█▀▀░█░░░█▀▀░█░█",
 	"░█░█░░█░░░█░░█▀█░█░█░█▀▄░█▀▀░█░░░█▀▀░▄▀▄",
 	"░▀▀▀░▀▀▀░░▀░░▀░▀░▀▀▀░▀▀░░▀░░░▀▀▀░▀▀▀░▀░▀",
 }
 
-// Purple gradient, light to deep, one 256-color shade per banner row.
 var bannerColors = []int{177, 135, 93}
-
 var bannerShown bool
 
 // animateBanner reveals the wordmark left to right in a quick sweep.

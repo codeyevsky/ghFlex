@@ -4,23 +4,22 @@
 
 # githubFlex
 
-An interactive terminal tool for GitHub, written in Go. It walks GitHub list
-pages and acts on every entry: **follow** the people on a
-followers/following/stargazers page, **unfollow** them again, **star** every
-repo on someone's stars page, and **unstar** your own stars.
+githubFlex is interactive terminal tool making easier for **"flexing"** 
+to other developers in GitHub. It walks GitHub list pages and acts 
+on every entry: **follow** the people on a followers/following/stargazers page, 
+**unfollow** them again, **star** every repo on someone's stars page, 
+and **unstar** your own stars.
 
-There are no subcommands or flags — you run one binary and everything happens
+There are no subcommands or flags. You run one binary and everything happens
 inside an interactive panel. It drives a real browser through Playwright, so
 it uses your normal logged-in GitHub session and never asks for an API token.
 Works with Firefox and Chromium on Linux, macOS and Windows.
 
-Everything happens in one screen — a Pagga wordmark banner (purple gradient,
-with a reveal animation on launch) over a menu you drive with the **arrow
-keys** (or `j`/`k`): move with up/down, confirm with Enter. No other key
-triggers anything, so a stray keystroke can't start an action; leave through
-`quit` (or Ctrl-C).
-
 ```
+  ░█▀▀░▀█▀░▀█▀░█░█░█░█░█▀▄░█▀▀░█░░░█▀▀░█░█
+  ░█░█░░█░░░█░░█▀█░█░█░█▀▄░█▀▀░█░░░█▀▀░▄▀▄
+  ░▀▀▀░▀▀▀░░▀░░▀░▀░▀▀▀░▀▀░░▀░░░▀▀▀░▀▀▀░▀░▀
+ ============================================================
   requirements: OK
   data: ~/.local/share/githubflex
 

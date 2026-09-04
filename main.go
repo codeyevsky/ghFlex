@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
 	"github.com/codeyevsky/ghFlex/internal/engine"
 	"github.com/codeyevsky/ghFlex/internal/style"
 	"github.com/mxschmitt/playwright-go"

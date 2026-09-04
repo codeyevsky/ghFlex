@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"strings"
 	"time"
-
 	"github.com/codeyevsky/ghFlex/internal/style"
 	"github.com/mxschmitt/playwright-go"
 )

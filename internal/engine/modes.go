@@ -1,16 +1,16 @@
+// Features' string map
+
 package engine
 
 import "github.com/codeyevsky/ghFlex/internal/style"
 
 type ModeSpec struct {
-	Kind  string // "user" or "repo"
-	Past  string // followed / unfollowed / starred / unstarred
+	Kind  string 
+	Past  string 
 	Mark  string
-	Color string // tint code for the mark
+	Color string 
 }
 
-// Modes is every action the engine knows. Kind decides which collector runs
-// and which state bucket the result lands in.
 var Modes = map[string]ModeSpec{
 	"follow":   {Kind: "user", Past: "followed", Mark: "[+]", Color: style.Green},
 	"unfollow": {Kind: "user", Past: "unfollowed", Mark: "[-]", Color: style.Red},

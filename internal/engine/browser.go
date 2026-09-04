@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"time"
-
 	"github.com/mxschmitt/playwright-go"
 )
 

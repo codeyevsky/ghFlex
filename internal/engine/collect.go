@@ -3,7 +3,6 @@ package engine
 import (
 	"fmt"
 	"strings"
-
 	"github.com/mxschmitt/playwright-go"
 )
 

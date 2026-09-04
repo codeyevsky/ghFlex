@@ -15,27 +15,9 @@ inside an interactive panel. It drives a real browser through Playwright, so it
 uses your normal logged in GitHub session and never asks for an API token. Works
 with Firefox and Chromium on Linux, macOS and Windows.
 
-```
-  ░█▀▀░▀█▀░▀█▀░█░█░█░█░█▀▄░█▀▀░█░░░█▀▀░█░█
-  ░█░█░░█░░░█░░█▀█░█░█░█▀▄░█▀▀░█░░░█▀▀░▄▀▄
-  ░▀▀▀░▀▀▀░░▀░░▀░▀░▀▀▀░▀▀░░▀░░░▀▀▀░▀▀▀░▀░▀
- ============================================================
-  requirements: OK
-  data: ~/.local/share/githubflex
-
-  up/down (or j/k) to move, Enter to select
-
-   ->  setup     check / download requirements
-       login     save a GitHub session (opens a browser)
-       follow    follow a user's followers / following
-       unfollow  unfollow from your own following list
-       star      star every repo on a user's stars page
-       unstar    unstar your own starred repos
-       startree  star tree: branch through repo owners' stars
-       stats     history and totals
-       whoami    which account is logged in
-       quit      exit
-```
+<p align="center">
+  <img src="assets/panel.png" alt="githubFlex panel" width="760">
+</p>
 
 ## Install
 
@@ -55,6 +37,16 @@ go build -o bin/ghflex .
 
 That is the only thing you ever type in a shell. Everything else, including
 downloading the browser requirements, is done from inside the panel.
+
+## Updating
+
+Pick **`update`** in the panel to get the newest version. It runs
+`go install github.com/codeyevsky/ghFlex@latest` for you (Go must be on PATH),
+then asks you to restart githubFlex. If you built from a clone instead, run:
+
+```bash
+git pull && go build -o bin/ghflex .
+```
 
 ## First run
 

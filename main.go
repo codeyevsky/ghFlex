@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
 	"regexp"
 	"sort"
@@ -43,7 +44,10 @@ func (a args) bool(key string) bool { _, ok := a.opts[key]; return ok }
 var shortcutRe = regexp.MustCompile(`^([^:]+):(followers|following|stargazers|watchers|stars)$`)
 var repoRe = regexp.MustCompile(`^[^/]+/[^/]+$`)
 
-func normalizeURL(raw string) string {
+// normalizeURL turns a target into a GitHub URL. defaultTab is the tab a bare
+// username falls back to ("followers" for follow, "stars" for star), so
+// "d4vucat" under star opens their stars page, not their followers.
+func normalizeURL(raw, defaultTab string) string {
 	if raw == "" {
 		return ""
 	}
@@ -60,7 +64,7 @@ func normalizeURL(raw string) string {
 	if repoRe.MatchString(raw) {
 		return "https://github.com/" + raw + "/stargazers"
 	}
-	return "https://github.com/" + raw + "?tab=followers"
+	return "https://github.com/" + raw + "?tab=" + defaultTab
 }
 
 func showStats() {
@@ -307,7 +311,12 @@ func runCommand(cmd string, a args, in *bufio.Reader, interactive bool) error {
 	} else if strings.HasPrefix(raw, "me:") {
 		raw = who + raw[2:]
 	}
-	target := normalizeURL(raw)
+	// A bare username defaults to the tab this action works on.
+	defaultTab := "followers"
+	if cmd == "star" || cmd == "unstar" {
+		defaultTab = "stars"
+	}
+	target := normalizeURL(raw, defaultTab)
 	if target == "" {
 		return fmt.Errorf("a target is required, e.g. me:following or torvalds:stars")
 	}
@@ -341,6 +350,21 @@ func runCommand(cmd string, a args, in *bufio.Reader, interactive bool) error {
 		})
 }
 
+// doUpdate fetches and installs the newest release with `go install`. It needs
+// Go on PATH; the running binary is replaced on the next launch.
+func doUpdate() {
+	const mod = "github.com/codeyevsky/ghFlex@latest"
+	fmt.Println("  " + style.Tint(style.Dim, "running: go install "+mod))
+	c := exec.Command("go", "install", mod)
+	c.Stdout, c.Stderr = os.Stdout, os.Stderr
+	if err := c.Run(); err != nil {
+		fmt.Println("  " + style.Tint(style.Red, "update failed: "+err.Error()))
+		fmt.Println("  " + style.Tint(style.Dim, "no Go? from a clone run: git pull && go build -o bin/ghflex ."))
+		return
+	}
+	fmt.Println("  " + style.Tint(style.Green, "updated. restart githubFlex to use the new version."))
+}
+
 func rateLimitNotice(stopped string) {
 	if !strings.Contains(stopped, "rate limit") {
 		return
@@ -362,6 +386,7 @@ var menuItems = []menuItem{
 	{"startree", "star tree: branch through repo owners' stars"},
 	{"stats", "history and totals"},
 	{"whoami", "which account is logged in"},
+	{"update", "get the latest version"},
 	{"quit", "exit"},
 }
 
@@ -497,6 +522,10 @@ func panel() {
 			showStats()
 			pause()
 			continue
+		case "update":
+			doUpdate()
+			pause()
+			continue
 		}
 
 		a := args{opts: map[string]string{}}
@@ -537,6 +566,7 @@ func panel() {
 			}
 		}
 
+		fmt.Println() // separate the prompts from the run output
 		if err := safeRun(cmd, a, in, interactive); err != nil {
 			fmt.Fprintf(os.Stderr, "  %s\n", style.Tint(style.Red, fmt.Sprintf("error: %v", err)))
 		}

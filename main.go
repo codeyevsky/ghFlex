@@ -394,7 +394,7 @@ var menuItems = []menuItem{
 }
 
 var targetPrompt = map[string]string{
-	"follow": "who to follow  (e.g. username, username:following, owner/repo:stargazers)",
+	"follow": "who to follow  (e.g. username:followers  or  username:following)",
 	"star":   "whose stars to star  (e.g. username:stars)",
 }
 

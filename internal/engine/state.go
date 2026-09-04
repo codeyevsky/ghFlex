@@ -36,8 +36,6 @@ func DataDir() string {
 	return newDir
 }
 
-// MigrateData renames the old gh-autofollow data directory to githubflex, so
-// state, sessions and blocklist carry over under the new name.
 func MigrateData() {
 	if os.Getenv("GITHUBFLEX_HOME") != "" || os.Getenv("GH_AUTOFOLLOW_HOME") != "" {
 		return
@@ -69,8 +67,6 @@ type Run struct {
 	DryRun  bool   `json:"dryRun"`
 }
 
-// Old (Node) state files stored the count under a per-mode key like
-// "followed": 2 instead of "count", so accept both.
 func (r *Run) UnmarshalJSON(b []byte) error {
 	var m map[string]any
 	if err := json.Unmarshal(b, &m); err != nil {
@@ -139,7 +135,6 @@ func ProfilePath(browser string) string {
 	return p
 }
 
-// Blocklist reads blocklist.txt: one user or owner/repo per line, # comments.
 func Blocklist() map[string]bool {
 	out := map[string]bool{}
 	b, err := os.ReadFile(filepath.Join(DataDir(), "blocklist.txt"))

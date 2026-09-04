@@ -20,8 +20,6 @@ type target struct {
 	Token  string
 }
 
-// A follower/following row carries both a follow and an unfollow form; GitHub
-// hides one with CSS. The visible one tells us the current state.
 const collectUsersJS = `(verb) => {
   const vis = (el) => el && el.offsetParent !== null && getComputedStyle(el).display !== 'none';
   const isHeader = (el) =>
@@ -39,8 +37,6 @@ const collectUsersJS = `(verb) => {
   return out;
 }`
 
-// A repo card on a stars listing works the same way: paired /owner/repo/star
-// and /owner/repo/unstar forms, the visible one showing the current state.
 const collectReposJS = `(verb) => {
   const vis = (el) => el && el.offsetParent !== null && getComputedStyle(el).display !== 'none';
   const out = [];
@@ -56,8 +52,6 @@ const collectReposJS = `(verb) => {
   return out;
 }`
 
-// Send the action the same way GitHub's own button does: a POST to the form
-// action with the page's authenticity token, reusing the session cookies.
 const submitJS = `async ({ action, token }) => {
   try {
     const body = new URLSearchParams();
@@ -151,7 +145,6 @@ func rateLimitReason(res submitResult) string {
 }
 
 func gotoNextPage(page playwright.Page) (bool, error) {
-	// Clicking the Next link does not always navigate, so read its href and go there.
 	raw, err := page.Evaluate(nextPageJS)
 	if err != nil {
 		return false, err

@@ -40,7 +40,6 @@ func findSystemChromium() string {
 	return ""
 }
 
-// Common profile locations, used by --use-my-profile (chromium only).
 func realProfileDir() string {
 	home, _ := os.UserHomeDir()
 	for _, p := range []string{
@@ -59,7 +58,7 @@ type BrowserOpts struct {
 	Browser      string // firefox | chromium
 	Headless     bool
 	System       bool // prefer /usr/bin/chromium over Playwright's build
-	UseMyProfile bool // drive the real Chromium profile
+	UseMyProfile bool // drive the Chromium profile
 }
 
 // OpenBrowser launches a persistent context so the GitHub login is kept
@@ -107,7 +106,7 @@ func OpenBrowser(o BrowserOpts) (*Session, error) {
 			return nil, fmt.Errorf("--use-my-profile: no real chromium profile found")
 		}
 		if exe != "" {
-			opts.ExecutablePath = playwright.String(exe) // real profile pairs with the real browser build
+			opts.ExecutablePath = playwright.String(exe) 
 		}
 	} else {
 		dir = ProfilePath(o.Browser)
@@ -164,7 +163,6 @@ func IsLoggedIn(s *Session) string {
 	}); err != nil {
 		return ""
 	}
-	// New GitHub dashboard dropped meta[name=user-login]; cookies are the reliable signal.
 	if who := loginFromCookies(s.ctx); who != "" {
 		return who
 	}

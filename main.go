@@ -18,6 +18,9 @@ import (
 	"golang.org/x/term"
 )
 
+// Version is the release shown in the panel; bump it with each tagged release.
+const Version = "0.1.0"
+
 type args struct {
 	opts map[string]string
 }
@@ -482,6 +485,7 @@ func panel() {
 	for {
 		clearScreen(interactive)
 		printBanner(firstReveal)
+		revealLn("   version: "+style.Tint(style.Purple, "v"+Version), firstReveal)
 		revealLn("   requirements: "+reqLine(), firstReveal)
 		revealLn("   data: "+style.Tint(style.Dim, engine.DataDir()), firstReveal)
 

@@ -4,10 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/signal"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"github.com/codeyevsky/ghFlex/internal/engine"
 	"github.com/codeyevsky/ghFlex/internal/style"
@@ -227,7 +229,8 @@ func runCommand(cmd string, a args, in *bufio.Reader, interactive bool) error {
 	if err != nil {
 		return err
 	}
-	defer s.Close()
+	setActiveSession(s)
+	defer func() { setActiveSession(nil); s.Close() }()
 
 	if cmd == "login" {
 		if who := engine.IsLoggedIn(s); who != "" {
@@ -550,10 +553,41 @@ func safeRun(cmd string, a args, in *bufio.Reader, interactive bool) (err error)
 	return runCommand(cmd, a, in, interactive)
 }
 
+// The browser session in use, so a Ctrl-C handler can shut it down cleanly
+// instead of leaving Playwright's node process to crash with EPIPE.
+var (
+	activeMu      sync.Mutex
+	activeSession *engine.Session
+)
+
+func setActiveSession(s *engine.Session) {
+	activeMu.Lock()
+	activeSession = s
+	activeMu.Unlock()
+}
+
+// handleInterrupt closes the open browser (if any) on Ctrl-C, then exits
+// quietly, so no stack trace is printed and no profile is left locked.
+func handleInterrupt() {
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt)
+	go func() {
+		<-sig
+		activeMu.Lock()
+		if activeSession != nil {
+			activeSession.Close()
+		}
+		activeMu.Unlock()
+		fmt.Println("\n  stopped.")
+		os.Exit(0)
+	}()
+}
+
 func main() {
 	if len(os.Args) > 1 {
 		fmt.Println("githubFlex has no subcommands; everything is driven from the interactive panel.")
 	}
+	handleInterrupt()
 	engine.MigrateData()
 	panel()
 }

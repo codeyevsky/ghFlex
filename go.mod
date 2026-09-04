@@ -1,4 +1,4 @@
-module github.com/codeyevsky/githubflex
+module github.com/codeyevsky/ghFlex
 
 go 1.25.0
 

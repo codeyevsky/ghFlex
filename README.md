@@ -14,50 +14,43 @@ inside an interactive panel. It drives a real browser through Playwright, so
 it uses your normal logged-in GitHub session and never asks for an API token.
 Works with Firefox and Chromium on Linux, macOS and Windows.
 
-```
-  ░█▀▀░▀█▀░▀█▀░█░█░█░█░█▀▄░█▀▀░█░░░█▀▀░█░█
-  ░█░█░░█░░░█░░█▀█░█░█░█▀▄░█▀▀░█░░░█▀▀░▄▀▄
-  ░▀▀▀░▀▀▀░░▀░░▀░▀░▀▀▀░▀▀░░▀░░░▀▀▀░▀▀▀░▀░▀
+Everything happens in one screen — a Pagga wordmark banner (purple gradient,
+with a reveal animation on launch) over a menu you drive with the **arrow
+keys** (or `j`/`k`): move with up/down, confirm with Enter. No other key
+triggers anything, so a stray keystroke can't start an action; leave through
+`quit` (or Ctrl-C).
 
- ============================================================
-  requirements: not checked -- pick 'setup' to check / download
+```
+  requirements: OK
   data: ~/.local/share/githubflex
 
   up/down (or j/k) to move, Enter to select
 
    ->  setup     check / download requirements
        login     save a GitHub session (opens a browser)
-       follow    follow everyone on a list page
-       unfollow  unfollow from a list page
-       star      star every repo on someone's stars page
-       unstar    unstar repos (usually your own stars)
+       follow    follow a user's followers / following
+       unfollow  unfollow from your own following list
+       star      star every repo on a user's stars page
+       unstar    unstar your own starred repos
        startree  star tree: branch through repo owners' stars
        stats     history and totals
        whoami    which account is logged in
        quit      exit
 ```
 
-The banner is drawn with a purple gradient in the terminal. The panel
-itself sticks to plain ASCII (no box-drawing characters, so it renders
-correctly in any terminal or font) and is driven only with the **arrow
-keys** (or
-`j`/`k`): move with up/down and confirm with Enter. No other key triggers
-anything, so a stray keystroke can never start an action; leave through the
-`quit` entry (or Ctrl-C).
-
 ## Install
 
 With Go 1.22+ installed:
 
 ```bash
-go install github.com/codeyevsky/githubflex@latest
+go install github.com/codeyevsky/ghFlex@latest
 ```
 
-(the binary is named `githubflex`), or build from a clone:
+or build from a clone:
 
 ```bash
-git clone https://github.com/codeyevsky/githubflex.git
-cd githubflex
+git clone https://github.com/codeyevsky/ghFlex.git
+cd ghFlex
 go build -o ghflex .
 ```
 
@@ -98,8 +91,10 @@ The first-time flow, all inside the panel:
 
 ## How an action works
 
-Choosing `follow`, `unfollow`, `star` or `unstar` asks four questions, each
-with a default shown in brackets (press Enter to accept):
+Choosing `follow`, `unfollow`, `star` or `unstar` asks a short series of
+questions. Arrow-key choosers (`browser`, `speed`, `dry run`) start on the
+value shown; text/number prompts show their default in brackets — press Enter
+to accept:
 
 | Prompt | Meaning | Default |
 | --- | --- | --- |
@@ -132,11 +127,12 @@ cleanly, keeps whatever it already did, and prints a clear notice:
 ```
 
 You return to the panel and can pick up later. An unexpected error in any run
-is caught the same way, so the panel itself never dies. The tool opens the target page, acts on every visible
-entry, waits the chosen delay, then moves to the next page. A browser window
-is visible the whole time, so you can watch exactly what it does. Numeric
-prompts reject non-digit characters, and the target prompt only shows the
-shortcuts that make sense for the chosen action.
+is caught the same way, so the panel itself never dies.
+
+The tool opens the target page, acts on every visible entry, waits the chosen
+delay, then moves to the next page. A browser window is visible the whole
+time, so you can watch exactly what it does. Numeric prompts reject non-digit
+characters, and only follow/star ask for a target.
 
 **Always try a dry run first.** It lists who would be followed or which repos
 would be starred without doing anything.
@@ -209,7 +205,7 @@ follows/stars, all read from local state — no browser needed.
 
 ## Safety and limits
 
-- Actions are spaced 4–9 seconds apart, with a longer pause between pages.
+- Actions are spaced apart by the chosen `speed` preset, with a pause between pages.
 - The run **stops immediately** when GitHub answers with a limit response
   (HTTP 422/429/403, or an abuse / rate-limit page), and after 5 failures in
   a row.

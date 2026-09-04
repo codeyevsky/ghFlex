@@ -115,9 +115,13 @@ func OpenBrowser(o BrowserOpts) (*Session, error) {
 	ctx, err := engine.LaunchPersistentContext(dir, opts)
 	if err != nil {
 		_ = pw.Stop()
-		if o.UseMyProfile && regexp.MustCompile(`(?i)ProcessSingleton|SingletonLock|Failed to create|profile appears`).MatchString(err.Error()) {
+		locked := regexp.MustCompile(`(?i)ProcessSingleton|SingletonLock|Failed to (create|launch)|profile appears|in use`).MatchString(err.Error())
+		if o.UseMyProfile && locked {
 			return nil, fmt.Errorf("can't open your real %s profile, it's in use.\nClose every %s window (check: pgrep -a %s) and try again",
 				o.Browser, o.Browser, o.Browser)
+		}
+		if locked {
+			return nil, fmt.Errorf("can't open the %s profile: another githubFlex is already running (one instance per browser at a time). Close the other one, or use a different browser (firefox/chromium) for the second", o.Browser)
 		}
 		return nil, err
 	}

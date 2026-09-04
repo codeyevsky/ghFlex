@@ -1,4 +1,5 @@
 // All functions and variables used across in CLI 
+// we dont need comments i guess yall can get it from func names
 
 package main
 

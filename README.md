@@ -13,7 +13,7 @@
 
 githubFlex is an interactive terminal tool that makes it easy to **"flex"** on
 other developers on GitHub. It walks GitHub list pages and acts on every entry:
-**follow** the people on a followers/following/stargazers page, **unfollow**
+**follow** the people on a followers/following page, **unfollow**
 them again, **star** every repo on someone's stars page, and **unstar** your own
 stars.
 
@@ -47,13 +47,9 @@ downloading the browser requirements, is done from inside the panel.
 
 ## Updating
 
-Pick **`update`** in the panel to get the newest version. It runs
-`go install github.com/codeyevsky/ghFlex@latest` for you (Go must be on PATH),
-then asks you to restart githubFlex. If you built from a clone instead, run:
-
-```bash
-git pull && go build -o bin/ghflex .
-```
+Pick **`update`** in the panel. It downloads the latest release binary for your
+OS and replaces the running one in place (no Go needed), then asks you to
+restart githubFlex.
 
 ## Releases
 
@@ -179,8 +175,6 @@ The target prompt takes a full GitHub URL or one of these shortcuts:
 | `user:followers` | `github.com/user?tab=followers` |
 | `user:following` | `github.com/user?tab=following` |
 | `user:stars` | `github.com/user?tab=stars` |
-| `owner/repo:stargazers` | `github.com/owner/repo/stargazers` |
-| `owner/repo:watchers` | `github.com/owner/repo/watchers` |
 
 `me` always means the account you are logged in as:
 
@@ -194,33 +188,6 @@ Typical uses:
 * *Star the repos someone has starred*: action `star`, target `torvalds:stars`.
 * *Undo it later*: action `unfollow` with `me:following`, or `unstar` with
   `me:stars`.
-
-### startree: branching through the star graph
-
-`startree` walks the star graph breadth first. It stars the repos the root user
-starred, and for every starred repo it queues the repo's **owner** and walks
-their stars page next, branching level by level:
-
-```
-  -> depth 0: stars of torvalds
-       [*] libgit2/libgit2  (1/30)
-       [*] user1/repo1      (2/30)
-      -> depth 1: stars of libgit2
-           [*] someone/rust-thing  (3/30)
-      -> depth 1: stars of user1
-           ...
-```
-
-Its prompts: root user, branch depth (`0` = only the root's stars), pages per
-user, max stars total, dry run. The total cap applies to the whole tree, so a
-small `max stars total` keeps a deep tree harmless. Organizations can't star
-anything, so those branches just end quietly. Everything it stars is recorded
-and can be undone later with `unstar` on `me:stars`.
-
-If the tree runs dry before the target is reached (no new repos left to star),
-it asks whether to continue from **another root user**, and picks up with the
-leftover budget. Already-starred repos are skipped, so you keep filling the
-target without re-doing work.
 
 ### What each entry means while it runs
 
@@ -280,7 +247,6 @@ Layout:
 | `internal/engine/modes.go` | action definitions |
 | `internal/engine/collect.go` | form collection, submit, rate-limit detection, paging |
 | `internal/engine/run.go` | the page-walking engine (follow/unfollow/star/unstar) |
-| `internal/engine/startree.go` | breadth-first star tree |
 | `internal/engine/browser.go` | Playwright launch, persistent profiles, login detection |
 | `internal/engine/state.go` | state file, blocklist, data directory |
 

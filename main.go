@@ -3,10 +3,12 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
-	"os/exec"
 	"os/signal"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -44,8 +46,7 @@ func (a args) num(key string, def int) int {
 
 func (a args) bool(key string) bool { _, ok := a.opts[key]; return ok }
 
-var shortcutRe = regexp.MustCompile(`^([^:]+):(followers|following|stargazers|watchers|stars)$`)
-var repoRe = regexp.MustCompile(`^[^/]+/[^/]+$`)
+var shortcutRe = regexp.MustCompile(`^([^:]+):(followers|following|stars)$`)
 
 // normalizeURL turns a target into a GitHub URL. defaultTab is the tab a bare
 // username falls back to ("followers" for follow, "stars" for star), so
@@ -58,14 +59,7 @@ func normalizeURL(raw, defaultTab string) string {
 		return raw
 	}
 	if m := shortcutRe.FindStringSubmatch(raw); m != nil {
-		who, kind := m[1], m[2]
-		if kind == "stargazers" || kind == "watchers" {
-			return fmt.Sprintf("https://github.com/%s/%s", who, kind)
-		}
-		return fmt.Sprintf("https://github.com/%s?tab=%s", who, kind)
-	}
-	if repoRe.MatchString(raw) {
-		return "https://github.com/" + raw + "/stargazers"
+		return fmt.Sprintf("https://github.com/%s?tab=%s", m[1], m[2])
 	}
 	return "https://github.com/" + raw + "?tab=" + defaultTab
 }
@@ -225,7 +219,7 @@ func retryOnRateLimit(maxActions int, dryRun bool, in *bufio.Reader, interactive
 func runCommand(cmd string, a args, in *bufio.Reader, interactive bool) error {
 	browser := a.str("browser", "firefox")
 	_, isMode := engine.Modes[cmd]
-	isAction := isMode || cmd == "startree"
+	isAction := isMode
 
 	s, err := engine.OpenBrowser(engine.BrowserOpts{
 		Browser:      browser,
@@ -273,81 +267,6 @@ func runCommand(cmd string, a args, in *bufio.Reader, interactive bool) error {
 			return fmt.Errorf("not logged in in your real profile. Open GitHub there and sign in once, or use the login option")
 		}
 		return fmt.Errorf("not logged in. Use the login option first")
-	}
-
-	if cmd == "startree" {
-		root := a.str("user", "torvalds")
-		if root == "me" || root == "" {
-			root = who
-		}
-		dry := ""
-		if a.bool("dry-run") {
-			dry = " | DRY RUN"
-		}
-		fmt.Printf("  Account: %s | startree from %s | browser: %s%s\n", who, root, browser, dry)
-		maxTotal := a.num("max", 30)
-		dryRun := a.bool("dry-run")
-		total := 0
-		rlOptedIn := false
-		for {
-			remaining := maxTotal - total
-			if remaining <= 0 {
-				break
-			}
-			stats, err := engine.RunStarTree(s.Page, engine.TreeOptions{
-				RootUser:     root,
-				MaxDepth:     a.num("depth", 1),
-				PagesPerUser: a.num("pages", 1),
-				MaxActions:   remaining,
-				MinDelay:     time.Duration(a.num("min-delay", 4000)) * time.Millisecond,
-				MaxDelay:     time.Duration(a.num("max-delay", 9000)) * time.Millisecond,
-				PageDelay:    time.Duration(a.num("page-delay", 6000)) * time.Millisecond,
-				DryRun:       dryRun,
-			})
-			if err != nil {
-				return err
-			}
-			total += len(stats.Done)
-			fmt.Printf("\n  %s %d starred, %d skipped, %d users visited - %s\n", style.Tint(style.Green, "Done:"),
-				len(stats.Done), stats.Skipped, stats.Pages, stats.Stopped)
-
-			if strings.Contains(stats.Stopped, "rate limit") {
-				rateLimitNotice(stats.Stopped)
-				if !rlOptedIn {
-					if pick("wait and retry every 5 min until it clears?", []string{"no", "yes"}, 0, in, interactive) != "yes" {
-						break
-					}
-					rlOptedIn = true
-				}
-				if maxTotal-total <= 0 {
-					break
-				}
-				fmt.Println("  " + style.Tint(style.Cyan, "waiting 5 minutes, then retrying...  (Ctrl-C to stop)"))
-				time.Sleep(5 * time.Minute)
-				fmt.Println("  " + style.Tint(style.Cyan, "retrying now..."))
-				continue
-			}
-
-			// Target reached, or a dry run (never grows), so stop.
-			if total >= maxTotal || dryRun {
-				break
-			}
-			// The tree ran dry before the target; offer a fresh root to keep going.
-			fmt.Printf("  %s\n", style.Tint(style.Yellow, fmt.Sprintf("ran out of new repos (%d/%d starred).", total, maxTotal)))
-			if pick("try another root user?", []string{"no", "yes"}, 0, in, interactive) != "yes" {
-				break
-			}
-			fmt.Print("  root user (whose stars to branch from next): ")
-			line, err := in.ReadString('\n')
-			if err != nil {
-				break
-			}
-			root = sanitizeInput(line)
-			if root == "me" || root == "" {
-				break
-			}
-		}
-		return nil
 	}
 
 	raw := a.opts["url"]
@@ -399,16 +318,50 @@ func runCommand(cmd string, a args, in *bufio.Reader, interactive bool) error {
 		})
 }
 
-// doUpdate fetches and installs the newest release with `go install`. It needs
-// Go on PATH; the running binary is replaced on the next launch.
+// doUpdate downloads the latest release binary for this OS/arch and replaces
+// the running executable in place. No Go toolchain required.
 func doUpdate() {
-	const mod = "github.com/codeyevsky/ghFlex@latest"
-	fmt.Println("  " + style.Tint(style.Dim, "running: go install "+mod))
-	c := exec.Command("go", "install", mod)
-	c.Stdout, c.Stderr = os.Stdout, os.Stderr
-	if err := c.Run(); err != nil {
+	asset := fmt.Sprintf("ghflex-%s-%s", runtime.GOOS, runtime.GOARCH)
+	if runtime.GOOS == "windows" {
+		asset += ".exe"
+	}
+	url := "https://github.com/codeyevsky/ghFlex/releases/latest/download/" + asset
+
+	exe, err := os.Executable()
+	if err != nil {
+		fmt.Println("  " + style.Tint(style.Red, "update failed: can't locate the running binary: "+err.Error()))
+		return
+	}
+
+	fmt.Println("  " + style.Tint(style.Dim, "downloading "+asset+"..."))
+	resp, err := http.Get(url)
+	if err != nil {
 		fmt.Println("  " + style.Tint(style.Red, "update failed: "+err.Error()))
-		fmt.Println("  " + style.Tint(style.Dim, "no Go? from a clone run: git pull && go build -o bin/ghflex ."))
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println("  " + style.Tint(style.Red, fmt.Sprintf("update failed: no release binary for %s/%s (HTTP %d)", runtime.GOOS, runtime.GOARCH, resp.StatusCode)))
+		return
+	}
+
+	tmp := exe + ".new"
+	out, err := os.OpenFile(tmp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
+	if err != nil {
+		fmt.Println("  " + style.Tint(style.Red, "update failed: "+err.Error()))
+		return
+	}
+	if _, err := io.Copy(out, resp.Body); err != nil {
+		out.Close()
+		os.Remove(tmp)
+		fmt.Println("  " + style.Tint(style.Red, "update failed: "+err.Error()))
+		return
+	}
+	out.Close()
+
+	if err := os.Rename(tmp, exe); err != nil {
+		os.Remove(tmp)
+		fmt.Println("  " + style.Tint(style.Red, "update failed: can't replace the binary: "+err.Error()))
 		return
 	}
 	fmt.Println("  " + style.Tint(style.Green, "updated. restart githubFlex to use the new version."))
@@ -431,8 +384,7 @@ var menuItems = []menuItem{
 	{"follow", "follow everyone on a list page"},
 	{"unfollow", "unfollow from a list page"},
 	{"star", "star every repo on someone's stars page"},
-	{"unstar", "unstar repos (usually your own stars)"},
-	{"startree", "star tree: branch through repo owners' stars"},
+	{"unstar", "unstar your own starred repos"},
 	{"stats", "history and totals"},
 	{"whoami", "which account is logged in"},
 	{"update", "get the latest version"},
@@ -601,15 +553,6 @@ func panel() {
 			}
 			a.opts["pages"] = askInt("pages to walk", 3)
 			a.opts["max"] = askInt(maxLabel[cmd], 30)
-			askSpeed()
-			if pick("dry run", []string{"no", "yes"}, 0, in, interactive) == "yes" {
-				a.opts["dry-run"] = ""
-			}
-		} else if cmd == "startree" {
-			a.opts["user"] = ask("root user (whose stars to start from)", "torvalds")
-			a.opts["depth"] = askInt("branch depth (0 = only the root's stars)", 1)
-			a.opts["pages"] = askInt("pages per user", 1)
-			a.opts["max"] = askInt("max stars total", 30)
 			askSpeed()
 			if pick("dry run", []string{"no", "yes"}, 0, in, interactive) == "yes" {
 				a.opts["dry-run"] = ""
